@@ -1,0 +1,61 @@
+const ja = {
+  newTab: '新しいタブ', search: '検索またはURLを入力', askAi: 'AIに聞く', back: '戻る', forward: '進む', reload: '再読み込み', stop: '中止',
+  pin: 'ピン留め', unpin: 'ピン留めを外す', archive: 'アーカイブ', settings: '設定', assistant: 'アシスタント', close: '閉じる',
+  startTitle: '何をしますか？', startHint: '検索・URL・「gh 検索語」「mail」などのコマンド、またはAIへの質問',
+  pinApps: 'よく使うアプリをピン留め', recentlyArchived: '最近アーカイブされたタブ',
+  openTab: 'タブに切り替え', history: '履歴', goTo: '開く', searchWeb: '検索', askAssistant: 'アシスタントに聞く',
+  archiveTitle: 'アーカイブされたタブ', archiveEmpty: 'アーカイブは空です。使っていないタブは自動でここに移動します。', archiveFilter: 'アーカイブを検索', clearAll: 'すべて削除', restore: '復元', delete: '削除',
+  general: '一般', profiles: 'プロファイル', ai: 'AI', sync: '同期', shortcuts: 'ショートカット',
+  archiveAfter: '使っていないタブを自動でアーカイブ', archiveAfterHint: 'ピン留めしていないタブは、最後に使ってからこの時間が過ぎるとタブバーから消え、アーカイブに移動します。',
+  sleepAfter: 'バックグラウンドのタブをメモリから解放', sleepAfterHint: '解放されたタブは開いたときに再読み込みされます。音声を再生中のタブは解放されません。',
+  searchEngine: '検索エンジン', clearHistory: 'このプロファイルの履歴を消去', cleared: '消去しました',
+  o12h: '12時間後', o24h: '24時間後', o7d: '7日後', o30d: '30日後', onever: 'しない', o10m: '10分後', o30m: '30分後', o2h: '2時間後',
+  profileHint: 'プロファイルごとにタブ・ピン留め・ログイン状態（Cookie）が完全に分かれます。', addProfile: 'プロファイルを追加', name: '名前', current: '使用中', switchTo: '切り替え',
+  aiHint: 'APIキーは不要です。このPCにインストール済みの公式CLIのログインを使い、契約中のサブスクリプションの枠でAIを動かします。ページの内容は信頼できない入力として扱い、CLIのツール実行は無効化しています。',
+  detected: '利用可能', notFound: '未検出', redetect: '再検出', model: 'モデル', modelPlaceholder: '既定（空欄）', cliPath: 'CLIのパス（自動検出できない場合）', useThis: 'これを使う', inUse: '使用中',
+  install: 'インストール',
+  syncHint: 'タブ・ピン留め・プロファイル・設定を、自分で用意した同期サーバー経由で他のデバイス（iOS版など）と共有します。データは端末内で暗号化され、サーバーは中身を読めません。',
+  syncServer: '同期サーバーのURL', syncCreate: 'この端末で同期を開始', syncJoinLabel: '別の端末のペアリングリンク', syncJoin: '参加', syncOff: '未設定', syncOk: '同期中', syncConnecting: '接続中…', syncError: 'エラー',
+  pairing: '他の端末を追加', pairingHint: 'iPhoneのカメラでQRコードを読み取るか、リンクをMarigoldに貼り付けます。このリンクは鍵そのものです。他人に見せないでください。',
+  copyLink: 'リンクをコピー', copied: 'コピーしました', devices: '接続中のデバイス', thisDevice: 'この端末', deviceName: 'この端末の名前', disconnect: '同期を解除', lastSync: '最終同期',
+  joinConfirm: 'このペアリングリンクで同期に参加しますか？',
+  aiEmpty: 'このページについて何でも聞いてください。', aiPlaceholder: '質問を入力…  (Enterで送信)', aiNoProvider: '使えるAIが見つかりません',
+  aiNoProviderHint: 'Claude Pro/MaxならClaude Code、ChatGPT Plus/ProならCodex CLIをインストールしてログインしてください。',
+  thisPage: 'このページ', addTabs: 'タブを追加', newChat: '新しい会話', send: '送信', asleep: 'スリープ中',
+  pSummarize: 'このページを要約して', pKeyPoints: '重要なポイントを3つ挙げて', pCompare: '開いているタブを比較して', pExplain: '選択した部分をわかりやすく説明して',
+  find: 'ページ内を検索', noTabs: 'タブはありません', sidebar: 'サイドバー', askAnything: 'なんでも聞く、検索する、URLを開く…', askPage: 'このページについて質問…', askPlain: '質問を入力…',
+};
+
+const en: typeof ja = {
+  newTab: 'New tab', search: 'Search or enter address', askAi: 'Ask AI', back: 'Back', forward: 'Forward', reload: 'Reload', stop: 'Stop',
+  pin: 'Pin', unpin: 'Unpin', archive: 'Archive', settings: 'Settings', assistant: 'Assistant', close: 'Close',
+  startTitle: 'What are you up to?', startHint: 'Search, a URL, a command like “gh query” or “mail”, or a question for the assistant',
+  pinApps: 'Pin the apps you live in', recentlyArchived: 'Recently archived',
+  openTab: 'Switch to tab', history: 'History', goTo: 'Open', searchWeb: 'Search', askAssistant: 'Ask the assistant',
+  archiveTitle: 'Archived tabs', archiveEmpty: 'Nothing here yet. Tabs you stop using move here on their own.', archiveFilter: 'Filter archive', clearAll: 'Delete all', restore: 'Restore', delete: 'Delete',
+  general: 'General', profiles: 'Profiles', ai: 'AI', sync: 'Sync', shortcuts: 'Shortcuts',
+  archiveAfter: 'Archive tabs you are not using', archiveAfterHint: 'Unpinned tabs leave the tab bar and move to the archive once this much time has passed since you last used them.',
+  sleepAfter: 'Unload background tabs from memory', sleepAfterHint: 'Unloaded tabs reload when you open them. Tabs playing audio are never unloaded.',
+  searchEngine: 'Search engine', clearHistory: 'Clear this profile’s history', cleared: 'Cleared',
+  o12h: 'After 12 hours', o24h: 'After 24 hours', o7d: 'After 7 days', o30d: 'After 30 days', onever: 'Never', o10m: 'After 10 minutes', o30m: 'After 30 minutes', o2h: 'After 2 hours',
+  profileHint: 'Each profile has its own tabs, pinned tabs and sign-ins (cookies).', addProfile: 'Add profile', name: 'Name', current: 'Current', switchTo: 'Switch',
+  aiHint: 'No API keys. Marigold drives the official CLI already signed in on this computer, so the assistant runs on the subscription you pay for. Page content is treated as untrusted input and CLI tool execution is disabled.',
+  detected: 'Available', notFound: 'Not found', redetect: 'Detect again', model: 'Model', modelPlaceholder: 'Default (leave empty)', cliPath: 'CLI path (if not detected)', useThis: 'Use this', inUse: 'In use',
+  install: 'Install',
+  syncHint: 'Share tabs, pinned tabs, profiles and settings with your other devices (such as the iOS app) through a sync server you run. Data is encrypted on the device; the server cannot read it.',
+  syncServer: 'Sync server URL', syncCreate: 'Start syncing from this device', syncJoinLabel: 'Pairing link from another device', syncJoin: 'Join', syncOff: 'Not set up', syncOk: 'Syncing', syncConnecting: 'Connecting…', syncError: 'Error',
+  pairing: 'Add another device', pairingHint: 'Scan the QR code with your iPhone camera, or paste the link into Marigold. The link is the key itself: keep it private.',
+  copyLink: 'Copy link', copied: 'Copied', devices: 'Devices', thisDevice: 'This device', deviceName: 'This device’s name', disconnect: 'Stop syncing', lastSync: 'Last sync',
+  joinConfirm: 'Join sync with this pairing link?',
+  aiEmpty: 'Ask anything about this page.', aiPlaceholder: 'Ask a question…  (Enter to send)', aiNoProvider: 'No assistant available',
+  aiNoProviderHint: 'Install and sign in to Claude Code (Claude Pro/Max) or the Codex CLI (ChatGPT Plus/Pro).',
+  thisPage: 'This page', addTabs: 'Add tabs', newChat: 'New chat', send: 'Send', asleep: 'Asleep',
+  pSummarize: 'Summarize this page', pKeyPoints: 'Give me the three key points', pCompare: 'Compare my open tabs', pExplain: 'Explain the selected part simply',
+  find: 'Find in page', noTabs: 'No tabs', sidebar: 'Sidebar', askAnything: 'Ask anything, search, or enter an address…', askPage: 'Ask a question about this page…', askPlain: 'Ask a question…',
+};
+
+export type Lang = 'ja' | 'en';
+let lang: Lang = 'en';
+export const setLocale = (locale: string) => (lang = locale.toLowerCase().startsWith('ja') ? 'ja' : 'en');
+export const getLang = () => lang;
+export const t = (key: keyof typeof ja) => (lang === 'ja' ? ja : en)[key];

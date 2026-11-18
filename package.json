@@ -1,0 +1,39 @@
+{
+  "name": "marigold",
+  "productName": "Marigold",
+  "version": "0.1.0",
+  "description": "A lightweight, AI-native browser with self-cleaning tabs, profiles and bring-your-own-LLM.",
+  "private": true,
+  "license": "MIT",
+  "author": "Marigold contributors",
+  "type": "module",
+  "main": "dist/main.cjs",
+  "scripts": {
+    "build": "node build.mjs",
+    "start": "node build.mjs && electron .",
+    "dev": "node build.mjs --watch & electron .",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test test/*.test.ts",
+    "test:e2e": "node build.mjs && xvfb-run -a node test/e2e/run.mjs",
+    "sync-server": "node sync/server/server.ts",
+    "dist": "node build.mjs && electron-builder"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "electron": "^45.3.4",
+    "electron-builder": "^26.0.12",
+    "esbuild": "^0.25.0",
+    "preact": "^10.26.0",
+    "qrcode-generator": "^1.4.4",
+    "typescript": "^5.7.0"
+  },
+  "build": {
+    "appId": "dev.marigold.browser",
+    "productName": "Marigold",
+    "files": ["dist/**/*", "package.json"],
+    "mac": { "category": "public.app-category.productivity", "target": ["dmg"] },
+    "win": { "target": ["nsis"] },
+    "linux": { "target": ["AppImage"], "category": "Network" },
+    "protocols": [{ "name": "Marigold", "schemes": ["marigold"] }]
+  }
+}

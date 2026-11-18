@@ -1,0 +1,78 @@
+name: Marigold
+options:
+  bundleIdPrefix: dev.marigold
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  Marigold:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: Marigold
+    info:
+      path: Marigold/Info.plist
+      properties:
+        CFBundleDisplayName: Marigold
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        UILaunchScreen: {}
+        ITSAppUsesNonExemptEncryption: false
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        CFBundleURLTypes:
+          - CFBundleTypeRole: Editor
+            CFBundleURLName: dev.marigold.browser.ios.pairing
+            CFBundleURLSchemes:
+              - marigold
+        NSAppTransportSecurity:
+          # A self-hosted sync server on the LAN is usually plain http.
+          NSAllowsLocalNetworking: true
+          # It is a browser: pages themselves may be http.
+          NSAllowsArbitraryLoadsInWebContent: true
+        NSLocalNetworkUsageDescription: Marigold connects to your self-hosted sync server on the local network.
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.marigold.browser.ios
+        PRODUCT_NAME: Marigold
+        TARGETED_DEVICE_FAMILY: "1,2"
+        GENERATE_INFOPLIST_FILE: NO
+        ENABLE_PREVIEWS: YES
+  MarigoldTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: MarigoldTests
+    dependencies:
+      - target: Marigold
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.marigold.browser.ios.tests
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  Marigold:
+    build:
+      targets:
+        Marigold: all
+        MarigoldTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - MarigoldTests
