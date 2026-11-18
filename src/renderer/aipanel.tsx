@@ -66,17 +66,19 @@ export function AiPanel({ state, chat, onSend, onStop, onNew, onClose, onSetting
   return (
     <aside class="ai" data-testid="ai-panel">
       <header>
-        <Icon name="spark" />
-        {available.length > 1 ? (
-          <select value={provider?.id} onChange={(e) => api.invoke('local.update', { aiProvider: (e.target as HTMLSelectElement).value })}>
-            {available.map((p) => <option value={p.id}>{p.label}</option>)}
-          </select>
-        ) : (
-          <strong>{provider?.label ?? t('assistant')}</strong>
-        )}
+        <span class="ai-title">
+          <Icon name="spark" size={15} />
+          {available.length > 1 ? (
+            <select value={provider?.id} onChange={(e) => api.invoke('local.update', { aiProvider: (e.target as HTMLSelectElement).value })}>
+              {available.map((p) => <option value={p.id}>{p.label}</option>)}
+            </select>
+          ) : (
+            <span>{provider?.label ?? t('assistant')}</span>
+          )}
+        </span>
         <span class="grow" />
-        <button class="icon small" title={t('newChat')} onClick={onNew}><Icon name="plus" size={14} /></button>
-        <button class="icon small" title={t('close')} onClick={onClose}><Icon name="close" size={14} /></button>
+        <button class="icon" title={t('newChat')} onClick={onNew}><Icon name="compose" /></button>
+        <button class="icon" title={t('close')} onClick={onClose}><Icon name="close" /></button>
       </header>
 
       <div class="ai-scroll" ref={scroller}>
@@ -97,7 +99,8 @@ export function AiPanel({ state, chat, onSend, onStop, onNew, onClose, onSetting
           </div>
         ) : chat.messages.length === 0 && !chat.streaming ? (
           <div class="ai-empty">
-            <p>{t('aiEmpty')}</p>
+            <h3>{active ? t('aiEmptyTitle') : t('aiEmptyTitlePlain')}</h3>
+            {active && <p>{active.title || active.url}</p>}
             <div class="ideas">
               {ideas.map((i) => (
                 <button key={i.label} data-testid="ai-idea" onClick={() => submit(i.label, i.tabIds)}>{i.label}</button>
@@ -138,7 +141,7 @@ export function AiPanel({ state, chat, onSend, onStop, onNew, onClose, onSetting
               <div class="chips">
                 {active && (
                   <button class={`chip ${usePage ? 'on' : ''}`} title={active.title} onClick={() => setUsePage(!usePage)}>
-                    <Favicon url={active.faviconUrl} page={active.url} size={14} />
+                    <span class="chip-ico"><Favicon url={active.faviconUrl} page={active.url} size={16} /></span>
                     <span class="chip-text"><b>{active.title || t('thisPage')}</b><i>{hostOf(active.url)}</i></span>
                   </button>
                 )}
@@ -146,7 +149,7 @@ export function AiPanel({ state, chat, onSend, onStop, onNew, onClose, onSetting
                   const x = state.tabs.find((y) => y.id === id)!;
                   return (
                     <button key={id} class="chip on" title={x.title} onClick={() => setExtra(extra.filter((e) => e !== id))}>
-                      <Favicon url={x.faviconUrl} page={x.url} size={14} />
+                      <span class="chip-ico"><Favicon url={x.faviconUrl} page={x.url} size={16} /></span>
                       <span class="chip-text"><b>{x.title || x.url}</b><i>{hostOf(x.url)}</i></span>
                       <Icon name="close" size={10} />
                     </button>
@@ -167,7 +170,7 @@ export function AiPanel({ state, chat, onSend, onStop, onNew, onClose, onSetting
             />
             <div class="composer-row">
               {state.tabs.length > (active ? 1 : 0) && (
-                <button class="icon small" title={t('addTabs')} onClick={() => setPicking(!picking)}><Icon name="plus" size={15} /></button>
+                <button class="icon" title={t('addTabs')} onClick={() => setPicking(!picking)}><Icon name="plus" /></button>
               )}
               <span class="grow" />
               {chat.streaming ? (

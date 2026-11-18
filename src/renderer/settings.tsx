@@ -1,12 +1,13 @@
 import qrcode from 'qrcode-generator';
 import { useEffect, useState } from 'preact/hooks';
-import { ARCHIVE_OPTIONS, PROFILE_COLORS, SLEEP_OPTIONS, type UiState } from '../shared/types.ts';
+import { ARCHIVE_OPTIONS, BUDGET_OPTIONS, PROFILE_COLORS, SLEEP_OPTIONS, type MemoryReport, type UiState } from '../shared/types.ts';
 import { api } from './api.ts';
 import { getLang, t } from './i18n.ts';
-import { Icon } from './icons.tsx';
+import { Favicon, Icon } from './icons.tsx';
 
-const SECTIONS = ['general', 'profiles', 'ai', 'sync', 'shortcuts'] as const;
+const SECTIONS = ['general', 'memory', 'profiles', 'ai', 'sync', 'shortcuts'] as const;
 type Section = (typeof SECTIONS)[number];
+const NAV_ICON: Record<Section, string> = { general: 'settings', memory: 'memory', profiles: 'user', ai: 'spark', sync: 'syncs', shortcuts: 'keyboard' };
 
 export function SettingsView({ state, section, link, onClose }: { state: UiState; section?: string; link?: string; onClose: () => void }) {
   const [tab, setTab] = useState<Section>((SECTIONS as readonly string[]).includes(section ?? '') ? (section as Section) : 'general');
@@ -19,11 +20,13 @@ export function SettingsView({ state, section, link, onClose }: { state: UiState
       <div class="settings">
         <nav>
           {SECTIONS.map((s) => (
-            <button key={s} class={s === tab ? 'on' : ''} data-testid={`settings-${s}`} onClick={() => setTab(s)}>{t(s)}</button>
+            <button key={s} class={s === tab ? 'on' : ''} data-testid={`settings-${s}`} onClick={() => setTab(s)}><Icon name={NAV_ICON[s]} size={15} /> {t(s)}</button>
           ))}
         </nav>
         <div class="modal-body">
+          <h2 class="section-title">{t(tab)}</h2>
           {tab === 'general' && <General state={state} />}
+          {tab === 'memory' && <Memory state={state} />}
           {tab === 'profiles' && <Profiles state={state} />}
           {tab === 'ai' && <Ai state={state} />}
           {tab === 'sync' && <Sync state={state} link={link} />}
@@ -34,15 +37,82 @@ export function SettingsView({ state, section, link, onClose }: { state: UiState
   );
 }
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: preact.ComponentChildren }) {
+function Field({ label, hint, icon, tone, children }: { label: string; hint?: string; icon?: string; tone?: string; children: preact.ComponentChildren }) {
   return (
     <div class="field">
-      <div class="field-head">
+      {icon && <span class="field-ico" style={{ background: tone }}><Icon name={icon} size={13} /></span>}
+      <div class="field-text">
         <label>{label}</label>
-        {children}
+        {hint && <p class="hint">{hint}</p>}
       </div>
-      {hint && <p class="hint">{hint}</p>}
+      {children}
     </div>
+  );
+}
+
+const gb = (mb: number) => (mb >= 1024 ? `${(mb / 1024).toFixed(mb % 1024 ? 1 : 0)} GB` : `${mb} MB`);
+
+function Memory({ state }: { state: UiState }) {
+  const [m, setM] = useState<MemoryReport | null>(null);
+  useEffect(() => {
+    const load = () => api.invoke<MemoryReport>('memory.get').then(setM);
+    load();
+    const timer = setInterval(load, 2000);
+    return () => clearInterval(timer);
+  }, []);
+  const budget = m && m.budgetMb > 0 ? m.budgetMb : null;
+  return (
+    <>
+      <div class="group">
+        <div class="mem-head" data-testid="memory-total">
+          <div>
+            <span class="mem-big">{m ? gb(m.totalMb) : '—'}</span>
+            <span class="muted"> {budget ? `/ ${gb(budget)}` : ''}</span>
+          </div>
+          <span class="muted">{t('memTotal')}</span>
+        </div>
+        {m && (
+          <div class="meter">
+            <i class="base" style={{ width: `${Math.min(100, (m.baseMb / (budget ?? Math.max(m.totalMb, 1))) * 100)}%` }} />
+            <i style={{ width: `${Math.min(100, ((m.totalMb - m.baseMb) / (budget ?? Math.max(m.totalMb, 1))) * 100)}%` }} />
+          </div>
+        )}
+        {m && (
+          <div class="mem-legend">
+            <span><i class="dot base" /> {t('memBase')} {gb(m.baseMb)}</span>
+            <span><i class="dot" /> {t('memAwake')} {m.tabs.length} · {gb(m.totalMb - m.baseMb)}</span>
+            <span>{t('memAsleep')} {m.asleep}</span>
+          </div>
+        )}
+      </div>
+      <div class="group">
+        <Field icon="gauge" tone="#3b82f6" label={t('memBudget')} hint={t('memBudgetHint')}>
+          <select value={state.local.memoryBudgetMb} onChange={(e) => api.invoke('local.update', { memoryBudgetMb: Number((e.target as HTMLSelectElement).value) })}>
+            {BUDGET_OPTIONS.map((b) => <option value={b}>{b === 0 ? `${t('memAuto')}${m && state.local.memoryBudgetMb === 0 ? ` (${gb(m.budgetMb)})` : ''}` : b < 0 ? t('memNoLimit') : gb(b)}</option>)}
+          </select>
+        </Field>
+        <Field icon="moon" tone="#8b5cf6" label={t('sleepAfter')} hint={t('sleepAfterHint')}>
+          <select value={state.local.sleepAfterMs} onChange={(e) => api.invoke('local.update', { sleepAfterMs: Number((e.target as HTMLSelectElement).value) })}>
+            {SLEEP_OPTIONS.map((o) => <option value={o.ms}>{t(`o${o.key}` as 'o5m')}</option>)}
+          </select>
+        </Field>
+      </div>
+      <div class="group-head">
+        <h3>{t('memAwake')}</h3>
+        <button class="btn ghost" disabled={!m || m.tabs.filter((x) => !x.active).length === 0} onClick={() => api.invoke('memory.sleep', null)}>{t('memSleepAll')}</button>
+      </div>
+      <div class="group">
+        {m && m.tabs.length === 0 && <p class="empty">{t('memNone')}</p>}
+        {m?.tabs.map((x) => (
+          <div class="mem-row" key={x.id}>
+            <Favicon url={x.faviconUrl} page={x.url} />
+            <span class="grow">{x.title}</span>
+            <span class="mem-mb">{x.mb ? gb(x.mb) : '—'}</span>
+            <button class="btn ghost" disabled={x.active} onClick={() => api.invoke('memory.sleep', x.id)}>{t('memSleep')}</button>
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
 
@@ -50,25 +120,24 @@ function General({ state }: { state: UiState }) {
   const [cleared, setCleared] = useState(false);
   return (
     <>
-      <Field label={t('archiveAfter')} hint={t('archiveAfterHint')}>
-        <select data-testid="archive-after" value={state.settings.archiveAfterMs} onChange={(e) => api.invoke('settings.update', { archiveAfterMs: Number((e.target as HTMLSelectElement).value) })}>
-          {ARCHIVE_OPTIONS.map((o) => <option value={o.ms}>{t(`o${o.key}` as 'o12h')}</option>)}
-        </select>
-      </Field>
-      <Field label={t('sleepAfter')} hint={t('sleepAfterHint')}>
-        <select value={state.local.sleepAfterMs} onChange={(e) => api.invoke('local.update', { sleepAfterMs: Number((e.target as HTMLSelectElement).value) })}>
-          {SLEEP_OPTIONS.map((o) => <option value={o.ms}>{t(`o${o.key}` as 'o10m')}</option>)}
-        </select>
-      </Field>
-      <Field label={t('searchEngine')}>
-        <select value={state.settings.searchEngine} onChange={(e) => api.invoke('settings.update', { searchEngine: (e.target as HTMLSelectElement).value })}>
-          <option value="google">Google</option>
-          <option value="duckduckgo">DuckDuckGo</option>
-          <option value="bing">Bing</option>
-        </select>
-      </Field>
-      <div class="row">
-        <button class="btn ghost" onClick={() => api.invoke('history.clear').then(() => setCleared(true))}>{cleared ? t('cleared') : t('clearHistory')}</button>
+      <div class="group">
+        <Field icon="archive" tone="#f59e0b" label={t('archiveAfter')} hint={t('archiveAfterHint')}>
+          <select data-testid="archive-after" value={state.settings.archiveAfterMs} onChange={(e) => api.invoke('settings.update', { archiveAfterMs: Number((e.target as HTMLSelectElement).value) })}>
+            {ARCHIVE_OPTIONS.map((o) => <option value={o.ms}>{t(`o${o.key}` as 'o12h')}</option>)}
+          </select>
+        </Field>
+      </div>
+      <div class="group">
+        <Field icon="search" tone="#10b981" label={t('searchEngine')}>
+          <select value={state.settings.searchEngine} onChange={(e) => api.invoke('settings.update', { searchEngine: (e.target as HTMLSelectElement).value })}>
+            <option value="google">Google</option>
+            <option value="duckduckgo">DuckDuckGo</option>
+            <option value="bing">Bing</option>
+          </select>
+        </Field>
+        <Field icon="clock" tone="#ef4444" label={t('clearHistory')}>
+          <button class="btn ghost" onClick={() => api.invoke('history.clear').then(() => setCleared(true))}>{cleared ? t('cleared') : t('delete')}</button>
+        </Field>
       </div>
     </>
   );
@@ -78,6 +147,7 @@ function Profiles({ state }: { state: UiState }) {
   return (
     <>
       <p class="hint">{t('profileHint')}</p>
+      <div class="group">
       {state.profiles.map((p) => (
         <div class="profile-row" key={p.id} data-testid="profile-row">
           <input class="emoji-input" value={p.icon} onChange={(e) => api.invoke('profile.update', { id: p.id, icon: (e.target as HTMLInputElement).value.trim().slice(0, 8) || '🌼' })} />
@@ -95,6 +165,7 @@ function Profiles({ state }: { state: UiState }) {
           <button class="icon small" title={t('delete')} disabled={state.profiles.length < 2} onClick={() => api.invoke('profile.delete', p.id)}><Icon name="trash" size={14} /></button>
         </div>
       ))}
+      </div>
       <div class="row">
         <button
           class="btn"

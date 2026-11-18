@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { integrationFor, matchActions } from '../src/shared/integrations.ts';
-import { orderBetween, resolveInput, tabsToArchive, viewsToSleep } from '../src/shared/lifecycle.ts';
+import { autoBudgetMb, orderBetween, resolveInput, tabsToArchive, viewsToRelieve, viewsToSleep } from '../src/shared/lifecycle.ts';
 
 const H = 3600_000;
 const tab = (id: string, hoursIdle: number, o: Partial<{ pinned: boolean; archivedAt: number | null }> = {}) => ({
@@ -58,4 +58,16 @@ test('integrations match hosts, badges and quick actions', () => {
   assert.equal(hits[0].label, 'Search GitHub: electron fiddle');
   assert.ok(matchActions('mail', 'ja').some((h) => h.action.id === 'gm-compose'));
   assert.deepEqual(matchActions('zzz', 'en'), []);
+});
+
+test('over budget: least recently used tabs go first, protected ones last, active never', () => {
+  const v = (id: string, mb: number, lastUsed: number, isProtected = false) => ({ id, mb, lastUsed, protected: isProtected });
+  const views = [v('active', 500, 9), v('old', 300, 1), v('typing', 400, 0, true), v('mid', 200, 2), v('new', 100, 3)];
+  assert.deepEqual(viewsToRelieve(views, 1800, 2000, 'active'), [], 'under budget');
+  assert.deepEqual(viewsToRelieve(views, 1800, 1400, 'active'), ['old', 'mid']);
+  assert.deepEqual(viewsToRelieve(views, 1800, 600, 'active'), ['old', 'mid', 'new', 'typing']);
+  assert.deepEqual(viewsToRelieve(views, 1800, 0, 'active'), [], '0 disables the budget');
+  assert.equal(autoBudgetMb(8192), 2048);
+  assert.equal(autoBudgetMb(2048), 1536);
+  assert.equal(autoBudgetMb(65536), 6144);
 });

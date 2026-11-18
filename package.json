@@ -16,6 +16,7 @@
     "test": "node --test test/*.test.ts",
     "test:e2e": "node build.mjs && xvfb-run -a node test/e2e/run.mjs",
     "sync-server": "node sync/server/server.ts",
+    "bench:memory": "node build.mjs && xvfb-run -a node test/e2e/memory.mjs",
     "dist": "node build.mjs && electron-builder"
   },
   "devDependencies": {

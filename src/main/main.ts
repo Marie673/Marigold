@@ -39,6 +39,7 @@ function uiState(): UiState {
     settings: store.settings(),
     local: {
       sleepAfterMs: store.local.sleepAfterMs,
+      memoryBudgetMb: store.local.memoryBudgetMb,
       aiProvider: store.local.aiProvider,
       aiModels: store.local.aiModels,
       aiPanelOpen: store.local.aiPanelOpen,
@@ -188,6 +189,12 @@ function handlers(): Record<string, Handler> {
     'nav.forward': () => activeWc()?.navigationHistory.goForward(),
     'nav.reload': () => (activeWc() ? activeWc()!.reload() : tabs.activeId && tabs.activate(tabs.activeId)),
     'nav.stop': () => activeWc()?.stop(),
+    'memory.get': () => tabs.memory(),
+    'memory.sleep': (id: string | null) => {
+      const ids = id ? [id] : tabs.tabViews().filter((x) => !x.asleep && x.id !== tabs.activeId).map((x) => x.id);
+      for (const x of ids) if (x !== tabs.activeId) tabs.sleep(x);
+      broadcast();
+    },
     'archive.list': () => tabs.archived(),
     'archive.clear': () => tabs.clearArchive(),
     suggest: (q: string) => suggest(String(q)),
@@ -229,7 +236,7 @@ function handlers(): Record<string, Handler> {
       broadcast();
     },
     'local.update': (p: Partial<LocalSettings>) => {
-      const allowed: (keyof LocalSettings)[] = ['sleepAfterMs', 'aiProvider', 'aiModels', 'aiPanelOpen', 'deviceName', 'cliPaths'];
+      const allowed: (keyof LocalSettings)[] = ['sleepAfterMs', 'memoryBudgetMb', 'aiProvider', 'aiModels', 'aiPanelOpen', 'deviceName', 'cliPaths'];
       const patch: Partial<LocalSettings> = {};
       for (const k of allowed) if (k in p) (patch as any)[k] = p[k];
       store.setLocal(patch);
@@ -333,9 +340,12 @@ function createWindow() {
     show: false,
     title: 'Marigold',
     titleBarStyle: isMac ? 'hiddenInset' : 'default',
-    trafficLightPosition: { x: 14, y: 13 },
+    trafficLightPosition: { x: 16, y: 15 },
     autoHideMenuBar: true,
-    backgroundColor: nativeTheme.shouldUseDarkColors ? '#1c1a17' : '#f4f1ea',
+    // macOS: the sidebar is translucent over the desktop, like a native sidebar.
+    ...(isMac
+      ? { vibrancy: 'under-window' as const, visualEffectState: 'followWindow' as const, backgroundColor: '#00000000' }
+      : { backgroundColor: nativeTheme.shouldUseDarkColors ? '#111316' : '#ecebe8' }),
     webPreferences: { preload: join(__dirname, 'preload.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false, spellcheck: false },
   });
   tabs = new TabManager(win, store, broadcast);
@@ -381,6 +391,7 @@ app.on('open-url', (e, url) => {
 
 app.whenReady().then(() => {
   if (!gotLock) return;
+  if (process.env.MARIGOLD_THEME === 'dark' || process.env.MARIGOLD_THEME === 'light') nativeTheme.themeSource = process.env.MARIGOLD_THEME;
   store = new Store(app.getPath('userData'));
   assistant = new Assistant(() => store.local.cliPaths);
   sync = new SyncClient(store, broadcast);
@@ -419,7 +430,7 @@ app.whenReady().then(() => {
   void refreshProviders();
 
   setTimeout(() => tabs?.sweep(), 3000);
-  setInterval(() => win && tabs.sweep(), 60_000);
+  setInterval(() => win && tabs.sweep(), 30_000);
   setInterval(() => sync.publishDevice(), 15 * 60_000);
 
   app.on('activate', () => {

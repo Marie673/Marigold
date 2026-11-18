@@ -14,6 +14,8 @@ export interface Integration {
   id: string;
   name: string;
   home: string;
+  /** The app's own icon, loaded from its site. */
+  icon: string;
   hosts: RegExp;
   color: string;
   actions: QuickAction[];
@@ -34,6 +36,7 @@ export const INTEGRATIONS: Integration[] = [
     id: 'github',
     name: 'GitHub',
     home: 'https://github.com/',
+    icon: 'https://github.com/favicon.ico',
     hosts: /(^|\.)github\.com$/,
     color: '#24292f',
     actions: [
@@ -55,6 +58,7 @@ export const INTEGRATIONS: Integration[] = [
     id: 'gmail',
     name: 'Gmail',
     home: 'https://mail.google.com/',
+    icon: 'https://ssl.gstatic.com/ui/v1/icons/mail/rfr/gmail.ico',
     hosts: /^mail\.google\.com$/,
     color: '#ea4335',
     actions: [
@@ -73,6 +77,7 @@ export const INTEGRATIONS: Integration[] = [
     id: 'notion',
     name: 'Notion',
     home: 'https://www.notion.so/',
+    icon: 'https://www.notion.so/images/favicon.ico',
     hosts: /(^|\.)notion\.(so|site|com)$/,
     color: '#191919',
     actions: [
@@ -89,6 +94,7 @@ export const INTEGRATIONS: Integration[] = [
     id: 'gcal',
     name: 'Google Calendar',
     home: 'https://calendar.google.com/',
+    icon: 'https://calendar.google.com/googlecalendar/images/favicons_2020q4/calendar_31.ico',
     hosts: /^calendar\.google\.com$/,
     color: '#4285f4',
     actions: [
@@ -101,6 +107,7 @@ export const INTEGRATIONS: Integration[] = [
     id: 'slack',
     name: 'Slack',
     home: 'https://app.slack.com/client',
+    icon: 'https://a.slack-edge.com/80588/marketing/img/meta/favicon-32.png',
     hosts: /^app\.slack\.com$/,
     color: '#4a154b',
     actions: [{ id: 'sl-open', keywords: ['slack'], label: { ja: 'Slackを開く', en: 'Open Slack' }, url: 'https://app.slack.com/client' }],

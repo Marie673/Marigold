@@ -22,25 +22,46 @@ const P: Record<string, string> = {
   check: 'M5 12l5 5 9-10',
   sidebar: 'M4 5h16v14H4zM9.500 5v14',
   up: 'M12 19V5M6 11l6-6 6 6',
+  compose: 'M12 5H6a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-6M17.500 3.500l3 3L12 15l-4 1 1-4 8.500-8.500z',
+  user: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4.500 20a7.500 7.500 0 0 1 15 0',
+  syncs: 'M4 9a8 8 0 0 1 14-3l2 2M20 4v4h-4M20 15a8 8 0 0 1-14 3l-2-2M4 20v-4h4',
+  keyboard: 'M3 6h18v12H3zM7 10h.01M11 10h.01M15 10h.01M17 14H7',
+  moon: 'M20 14.500A8 8 0 0 1 9.500 4a8 8 0 1 0 10.500 10.500z',
+  gauge: 'M4 16a8 8 0 1 1 16 0M12 16l4-5',
+  memory: 'M6 7h12v10H6zM9 7V4M15 7V4M9 20v-3M15 20v-3M3 10h3M3 14h3M18 10h3M18 14h3',
 };
 
 export function Icon({ name, size = 16 }: { name: keyof typeof P | string; size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <path d={P[name]} />
     </svg>
   );
 }
 
 export function Favicon({ url, page, size = 16 }: { url: string | null | undefined; page?: string; size?: number }) {
-  // Remember icons that failed to load so the tab falls back to a letter.
-  const [broken, setBroken] = useState<string | null>(null);
-  if (url && broken !== url) {
-    return <img class="favicon" src={url} width={size} height={size} onError={() => setBroken(url)} />;
-  }
+  // The letter tile shows until the real icon has actually loaded, so a slow or missing icon never leaves a hole.
+  const [loaded, setLoaded] = useState<string | null>(null);
   let letter = '';
   try {
     letter = new URL(page ?? '').hostname.replace(/^www\./, '')[0]?.toUpperCase() ?? '';
   } catch {}
-  return letter ? <span class="favicon letter" style={{ width: size, height: size, fontSize: size * 0.62 }}>{letter}</span> : <Icon name="globe" size={size} />;
+  const ready = !!url && loaded === url;
+  return (
+    <span class="favicon-box" style={{ width: size, height: size }}>
+      {!ready && (letter ? <span class="favicon letter" style={{ fontSize: size * 0.6 }}>{letter}</span> : <Icon name="globe" size={size} />)}
+      {url && <img class="favicon" style={{ opacity: ready ? 1 : 0 }} src={url} width={size} height={size} onLoad={() => setLoaded(url)} />}
+    </span>
+  );
+}
+
+/** The Marigold mark: a ring of petals. */
+export function Mark({ size = 44 }: { size?: number }) {
+  const petals = Array.from({ length: 12 }, (_, i) => i * 30);
+  return (
+    <svg class="mark" width={size} height={size} viewBox="0 0 48 48" aria-hidden="true">
+      {petals.map((r) => <ellipse cx="24" cy="10.500" rx="4.200" ry="8" transform={`rotate(${r} 24 24)`} fill="var(--accent)" opacity={r % 60 ? 0.55 : 0.95} />)}
+      <circle cx="24" cy="24" r="6.500" fill="var(--accent)" />
+    </svg>
+  );
 }

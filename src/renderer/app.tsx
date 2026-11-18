@@ -162,8 +162,8 @@ function App({ initial }: { initial: UiState }) {
           <button class={`icon ${active?.pinned ? 'on' : ''}`} title={active?.pinned ? t('unpin') : t('pin')} disabled={!active} onClick={() => active && api.invoke('tab.pin', { id: active.id, pinned: !active.pinned })}>
             <Icon name="pin" />
           </button>
-          <button class={`ai-toggle ${aiOpen ? 'on' : ''}`} data-testid="ai-toggle" title={t('assistant')} onClick={() => setAiOpen(!aiOpen)}>
-            <Icon name="spark" /> <span>{t('assistant')}</span>
+<button class={`icon ${aiOpen ? 'on' : ''}`} data-testid="ai-toggle" title={`${t('assistant')} (${mac ? '⌘' : 'Ctrl+'}E)`} onClick={() => setAiOpen(!aiOpen)}>
+            <Icon name="spark" />
           </button>
         </div>
         <div class="body">

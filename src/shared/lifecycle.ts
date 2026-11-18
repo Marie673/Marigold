@@ -27,6 +27,36 @@ export function viewsToSleep(views: LiveView[], now: number, sleepAfterMs: numbe
   return views.filter((v) => v.id !== activeId && !v.audible && now - v.lastUsed >= sleepAfterMs).map((v) => v.id);
 }
 
+export interface MemoryView {
+  id: string;
+  mb: number;
+  lastUsed: number;
+  /** Audible, being typed into, captured or inspected: sleep these last. */
+  protected: boolean;
+}
+
+/**
+ * Picks background tabs to unload so the app fits its memory budget:
+ * least recently used first, protected tabs only when nothing else is left.
+ */
+export function viewsToRelieve(views: MemoryView[], totalMb: number, budgetMb: number, activeId: string | null): string[] {
+  if (budgetMb <= 0 || totalMb <= budgetMb) return [];
+  const order = views.filter((v) => v.id !== activeId).sort((a, b) => Number(a.protected) - Number(b.protected) || a.lastUsed - b.lastUsed);
+  const out: string[] = [];
+  let total = totalMb;
+  for (const v of order) {
+    if (total <= budgetMb) break;
+    out.push(v.id);
+    total -= v.mb;
+  }
+  return out;
+}
+
+/** Automatic budget: a quarter of the machine's memory, between 1.5 and 6 GB. */
+export function autoBudgetMb(systemMb: number): number {
+  return Math.round(Math.min(6144, Math.max(1536, systemMb * 0.25)));
+}
+
 const SEARCH: Record<string, string> = {
   google: 'https://www.google.com/search?q=',
   duckduckgo: 'https://duckduckgo.com/?q=',

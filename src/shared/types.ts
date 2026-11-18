@@ -25,6 +25,8 @@ export interface ArchivedTab extends TabData {
 export interface LocalSettings {
   /** Background tabs idle for this long are unloaded from memory. 0 = never. */
   sleepAfterMs: number;
+  /** Total app memory above which background tabs are unloaded. 0 = automatic, -1 = no limit. */
+  memoryBudgetMb: number;
   aiProvider: string;
   aiModels: Record<string, string>;
   aiPanelOpen: boolean;
@@ -96,8 +98,21 @@ export const ARCHIVE_OPTIONS = [
   { ms: 0, key: 'never' },
 ] as const;
 
+export interface MemoryReport {
+  totalMb: number;
+  budgetMb: number;
+  systemMb: number;
+  /** Memory used by the browser itself (window, GPU, network). */
+  baseMb: number;
+  tabs: { id: string; title: string; faviconUrl: string | null; url: string; mb: number; active: boolean }[];
+  asleep: number;
+}
+
+export const BUDGET_OPTIONS = [0, 1024, 2048, 4096, 8192, -1] as const;
+
 export const SLEEP_OPTIONS = [
-  { ms: 10 * 60_000, key: '10m' },
+  { ms: 5 * 60_000, key: '5m' },
+  { ms: 15 * 60_000, key: '15m' },
   { ms: 30 * 60_000, key: '30m' },
   { ms: 2 * 3600_000, key: '2h' },
   { ms: 0, key: 'never' },

@@ -42,13 +42,14 @@ async function launch(name) {
     env: { ...process.env, MARIGOLD_USER_DATA: mkdtempSync(join(tmpdir(), `mg-${name}-`)), MARIGOLD_TEST: '1' },
   });
   const ui = await app.firstWindow();
+  if (process.env.MARIGOLD_THEME) await ui.emulateMedia({ colorScheme: process.env.MARIGOLD_THEME });
   await ui.waitForSelector('.sidebar');
   return { app, ui };
 }
 
 const shot = (name) => {
   try {
-    execFileSync('import', ['-window', 'root', join(out, `${name}.png`)], { stdio: 'ignore' });
+    execFileSync('import', ['-window', 'root', '-trim', join(out, `${name}.png`)], { stdio: 'ignore' });
   } catch {}
 };
 const step = (s) => console.log(`• ${s}`);
@@ -149,6 +150,9 @@ try {
   step('profiles have separate tabs and storage');
   await app.evaluate((_e, id) => globalThis.__marigold.tabs().webContents(id).executeJavaScript('localStorage.setItem("who", "personal")'), idA);
   await ui.click('button[title="設定"]');
+  await ui.click('[data-testid=settings-memory]');
+  await until(async () => /MB|GB/.test(await ui.textContent('[data-testid=memory-total]')), 'memory report');
+  shot('05a-settings-memory');
   await ui.click('[data-testid=settings-profiles]');
   await ui.click('[data-testid=add-profile]');
   await until(async () => (await ui.$$('[data-testid=profile-row]')).length === 2, 'second profile');

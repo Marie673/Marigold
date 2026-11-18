@@ -47,7 +47,7 @@ export function CommandBar({ state, mode, initial, onClose, onAsk, inline }: { s
     if (!query) {
       if (inline) return out;
       for (const i of INTEGRATIONS.slice(0, 4)) {
-        out.push({ key: `home-${i.id}`, icon: <span class="app-dot" style={{ background: i.color }}>{i.name[0]}</span>, title: i.name, sub: i.home.replace(/^https:\/\//, ''), hint: t('goTo'), run: () => go(i.home) });
+        out.push({ key: `home-${i.id}`, icon: <Favicon url={i.icon} page={i.home} />, title: i.name, sub: i.home.replace(/^https:\/\//, ''), hint: t('goTo'), run: () => go(i.home) });
       }
       return out;
     }
@@ -59,7 +59,7 @@ export function CommandBar({ state, mode, initial, onClose, onAsk, inline }: { s
     const askItem: Item = { key: 'ask', icon: <Icon name="spark" />, title: query, hint: t('askAssistant'), run: () => onAsk(query) };
     const actions = matchActions(query, getLang()).map<Item>((h) => ({
       key: `act-${h.action.id}`,
-      icon: <span class="app-dot" style={{ background: h.integration.color }}>{h.integration.name[0]}</span>,
+      icon: <Favicon url={h.integration.icon} page={h.integration.home} />,
       title: h.label,
       hint: h.integration.name,
       run: () => go(h.url),
@@ -98,9 +98,8 @@ export function CommandBar({ state, mode, initial, onClose, onAsk, inline }: { s
   return (
     <div class={`cmd ${inline ? 'inline' : ''}`} data-testid="command-bar">
       <div class="cmd-input">
-        <Icon name="search" size={18} />
+        <Icon name="search" size={17} />
         <input ref={input} data-testid="command-input" value={q} placeholder={inline ? t('askAnything') : t('search')} spellcheck={false} onInput={(e) => setQ((e.target as HTMLInputElement).value)} onKeyDown={onKey} />
-        <kbd>⇧↵ {t('askAi')}</kbd>
       </div>
       {items.length > 0 && (
         <div class="cmd-list">
@@ -114,6 +113,12 @@ export function CommandBar({ state, mode, initial, onClose, onAsk, inline }: { s
           ))}
         </div>
       )}
+      <div class="cmd-foot">
+        <span><kbd>↵</kbd> {t('hOpen')}</span>
+        <span><kbd>⇧↵</kbd> {t('hAsk')}</span>
+        <span class="grow" />
+        <button class={`send ${q.trim() ? '' : 'idle'}`} disabled={!q.trim()} title={t('goTo')} onClick={() => items[selected]?.run()}><Icon name="up" size={15} /></button>
+      </div>
     </div>
   );
 }

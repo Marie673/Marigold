@@ -1,10 +1,12 @@
 // Tab lifecycle: one WebContentsView per *awake* tab. Tabs that are asleep or
 // archived are just records and cost no memory.
-import { BrowserWindow, Menu, WebContentsView, clipboard, dialog, session, shell, type Session, type WebContents } from 'electron';
+import { BrowserWindow, Menu, WebContentsView, app, clipboard, dialog, session, shell, type Session, type WebContents } from 'electron';
+import { readFileSync } from 'node:fs';
+import { freemem, totalmem } from 'node:os';
 import type { ProfileData, TabData } from '../../sync/core/protocol.ts';
 import { integrationFor } from '../shared/integrations.ts';
-import { orderBetween, resolveInput, tabsToArchive, viewsToSleep } from '../shared/lifecycle.ts';
-import type { ArchivedTab, Rect, TabView } from '../shared/types.ts';
+import { autoBudgetMb, orderBetween, resolveInput, tabsToArchive, viewsToRelieve, viewsToSleep } from '../shared/lifecycle.ts';
+import type { ArchivedTab, MemoryReport, Rect, TabView } from '../shared/types.ts';
 import { L, isJa, localize } from './l10n.ts';
 import { newId, type Store } from './store.ts';
 
@@ -13,6 +15,8 @@ interface Live {
   lastUsed: number;
   loading: boolean;
   audible: boolean;
+  /** Keystrokes since the last navigation: a tab with typed input is not unloaded lightly. */
+  typed: number;
 }
 
 const ASK_PERMISSIONS: Record<string, [en: string, ja: string]> = {
@@ -30,6 +34,8 @@ export class TabManager {
   private readonly live = new Map<string, Live>();
   private readonly preparedSessions = new WeakSet<Session>();
   private readonly permissionMemory = new Map<string, boolean>();
+  /** Scroll positions of tabs, kept across sleep so waking a tab lands where you left it. */
+  private readonly scroll = new Map<string, { url: string; y: number }>();
   private bounds: Rect = { x: 0, y: 0, width: 0, height: 0 };
   private overlay = false;
   private attached: string | null = null;
@@ -119,6 +125,8 @@ export class TabManager {
 
   activate(id: string | null) {
     const tab = id ? this.store.tab(id) : null;
+    const prev = this.activeId;
+    if (prev && prev !== id) this.rememberScroll(prev);
     if (id && tab) {
       if (tab.profileId !== this.profileId) this.store.setLocal({ currentProfileId: tab.profileId });
       const patch: Partial<TabData> = { lastActiveAt: Date.now() };
@@ -257,8 +265,12 @@ export class TabManager {
       const wc = this.activeWebContents();
       if (wc && this.attached) {
         try {
+          // A small JPEG is plenty for a blurred backdrop and keeps the UI process lean.
           const img = await wc.capturePage();
-          if (!img.isEmpty()) shot = img.toDataURL();
+          if (!img.isEmpty()) {
+            const { width } = img.getSize();
+            shot = `data:image/jpeg;base64,${img.resize({ width: Math.min(width, 800), quality: 'good' }).toJPEG(60).toString('base64')}`;
+          }
         } catch {}
       }
     }
@@ -291,6 +303,45 @@ export class TabManager {
 
   // ---- lifecycle ----
 
+  private rememberScroll(id: string) {
+    const wc = this.webContents(id);
+    if (!wc || wc.isLoading()) return;
+    const url = wc.getURL();
+    wc.executeJavaScript('window.scrollY', false)
+      .then((y) => typeof y === 'number' && this.scroll.set(id, { url, y }))
+      .catch(() => {});
+  }
+
+  private budgetMb(): number {
+    const b = this.store.local.memoryBudgetMb;
+    return b === 0 ? autoBudgetMb(totalmem() / 1048576) : b;
+  }
+
+  /** Memory per awake tab, from the OS's view of each tab's renderer process. */
+  memory(): MemoryReport {
+    const metrics = app.getAppMetrics();
+    const byPid = new Map(metrics.map((m) => [m.pid, processMb(m.pid, m.memory.workingSetSize)]));
+    const totalMb = Math.round([...byPid.values()].reduce((n, mb) => n + mb, 0));
+    const active = this.activeId;
+    const tabs: MemoryReport['tabs'] = [];
+    const seen = new Set<number>();
+    for (const [id, l] of this.live) {
+      const tab = this.store.tab(id);
+      if (!tab || l.view.webContents.isDestroyed()) continue;
+      const pid = l.view.webContents.getOSProcessId();
+      // Tabs of the same site can share a process: count it once.
+      const mb = seen.has(pid) ? 0 : Math.round(byPid.get(pid) ?? 0);
+      seen.add(pid);
+      tabs.push({ id, title: tab.title || tab.url, faviconUrl: tab.faviconUrl, url: tab.url, mb, active: id === active });
+    }
+    tabs.sort((a, b) => b.mb - a.mb);
+    const open = this.store.list<TabData>('tab').filter((t) => t.data.archivedAt === null).length;
+    return {
+      totalMb, budgetMb: this.budgetMb(), systemMb: Math.round(totalmem() / 1048576),
+      baseMb: Math.max(0, totalMb - tabs.reduce((n, t) => n + t.mb, 0)), tabs, asleep: open - tabs.length,
+    };
+  }
+
   /** Runs every minute: archive stale tabs, unload idle ones. */
   sweep(now = Date.now()) {
     const active = this.activeId;
@@ -306,9 +357,22 @@ export class TabManager {
       this.sleep(id);
       this.store.patch<TabData>(`tab:${id}`, { archivedAt: now });
     }
-    const views = [...this.live].map(([id, l]) => ({ id, lastUsed: l.lastUsed, audible: l.audible }));
+    const isProtected = (l: Live) => l.audible || l.typed >= 8 || l.view.webContents.isDevToolsOpened();
+    const views = [...this.live].map(([id, l]) => ({ id, lastUsed: l.lastUsed, audible: isProtected(l) }));
     const idle = viewsToSleep(views, now, this.store.local.sleepAfterMs, active);
     for (const id of idle) this.sleep(id);
+    // Memory pressure: over budget, or the machine itself is nearly out of memory.
+    if (this.live.size > 1) {
+      const report = this.memory();
+      const mbOf = new Map(report.tabs.map((t) => [t.id, t.mb]));
+      const mem = [...this.live].map(([id, l]) => ({ id, mb: mbOf.get(id) ?? 0, lastUsed: l.lastUsed, protected: isProtected(l) }));
+      // macOS keeps free memory near zero by design, so the system check only applies elsewhere.
+      const starved = process.platform !== 'darwin' && freemem() / totalmem() < 0.06;
+      const budget = starved ? Math.min(report.budgetMb > 0 ? report.budgetMb : Infinity, report.totalMb - 1) : report.budgetMb;
+      const relieve = viewsToRelieve(mem, report.totalMb, budget, active).slice(0, starved ? 2 : undefined);
+      for (const id of relieve) this.sleep(id);
+      idle.push(...relieve);
+    }
     if (stale.length || idle.length) {
       if (active && stale.includes(active)) this.activate(null);
       this.layout();
@@ -335,6 +399,7 @@ export class TabManager {
     }
     if (this.fullscreenTab === id) this.fullscreenTab = null;
     this.live.delete(id);
+    if (!this.store.tab(id)) this.scroll.delete(id);
     if (!l.view.webContents.isDestroyed()) l.view.webContents.close();
   }
 
@@ -349,10 +414,19 @@ export class TabManager {
     const ses = session.fromPartition(`persist:profile-${tab.profileId}`);
     this.prepareSession(ses);
     const view = new WebContentsView({ webPreferences: { session: ses, sandbox: true, contextIsolation: true, nodeIntegration: false } });
-    const l: Live = { view, lastUsed: Date.now(), loading: false, audible: false };
+    const l: Live = { view, lastUsed: Date.now(), loading: false, audible: false, typed: 0 };
+    view.setBorderRadius?.(10);
     this.live.set(id, l);
     this.wire(id, l);
-    if (tab.url) view.webContents.loadURL(tab.url).catch(() => {});
+    if (tab.url) {
+      const saved = this.scroll.get(id);
+      if (saved && saved.y > 0 && saved.url === tab.url) {
+        view.webContents.once('did-finish-load', () => {
+          view.webContents.executeJavaScript(`window.scrollTo(0, ${Number(saved.y) || 0})`, false).catch(() => {});
+        });
+      }
+      view.webContents.loadURL(tab.url).catch(() => {});
+    }
     return l;
   }
 
@@ -381,7 +455,10 @@ export class TabManager {
       this.store.addHistory(url, wc.getTitle(), tab.profileId);
       changed();
     };
-    wc.on('did-navigate', (_e, url) => navigated(url, true));
+    wc.on('did-navigate', (_e, url) => ((l.typed = 0), navigated(url, true)));
+    wc.on('before-input-event', (_e, input) => {
+      if (input.type === 'keyDown' && input.key.length === 1 && !input.control && !input.meta) l.typed++;
+    });
     wc.on('did-navigate-in-page', (_e, url, isMainFrame) => isMainFrame && navigated(url, false));
     wc.on('audio-state-changed', (e) => ((l.audible = e.audible), changed()));
     wc.on('enter-html-full-screen', () => ((this.fullscreenTab = id), this.layout()));
@@ -472,6 +549,21 @@ export class TabManager {
       return this.permissionMemory.get(`${safeOrigin(origin)} ${permission}`) === true;
     });
   }
+}
+
+/**
+ * Memory of one process in MB. Electron reports resident size, which on Linux
+ * counts pages shared between processes once per process; the kernel's
+ * proportional figure (PSS) is the honest number there.
+ */
+function processMb(pid: number, workingSetKb: number): number {
+  if (process.platform === 'linux') {
+    try {
+      const m = /^Pss:\s+(\d+)/m.exec(readFileSync(`/proc/${pid}/smaps_rollup`, 'utf8'));
+      if (m) return Number(m[1]) / 1024;
+    } catch {}
+  }
+  return workingSetKb / 1024;
 }
 
 function safeOrigin(url: string): string {
